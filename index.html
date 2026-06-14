@@ -1,9 +1,62 @@
 <!DOCTYPE html>
-<html>
+<html lang="fa">
 <head>
-    <title>سایت من</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فضای موزیکال</title>
+    <style>
+        /* تنظیمات کل صفحه */
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* ست کردن عکس پس‌زمینه به صورت تمام صفحه */
+            background: url('bg.jpg') no-repeat center center fixed;
+            background-size: cover;
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+
+        /* استایل دکمه پخش موزیک */
+        .play-btn {
+            padding: 20px 40px;
+            font-size: 22px;
+            color: white;
+            background: rgba(0, 0, 0, 0.6); /* دکمه شیشه‌ای تیره */
+            border: 2px solid white;
+            border-radius: 50px;
+            cursor: pointer;
+            backdrop-filter: blur(5px); /* افکت مات شدن پشت دکمه */
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+
+        /* افکت انیمیشن ملایم هنگام نگه‌داشتن موس روی دکمه */
+        .play-btn:hover {
+            background: rgba(0, 0, 0, 0.8);
+            transform: scale(1.05);
+        }
+    </style>
 </head>
 <body>
-    <h1>سلام 👋</h1>
+
+    <button class="play-btn" id="btn">پخش موزیک 🎵</button>
+
+    <audio id="audio" loop src="music.mp3"></audio>
+
+    <script>
+        // وقتی کاربر روی دکمه کلیک کرد:
+        document.getElementById('btn').onclick = function() {
+            // ۱. موزیک پخش شود
+            document.getElementById('audio').play().catch(function(error) {
+                console.log("خطا در پخش صدا:", error);
+            });
+            // ۲. دکمه غیب (حذف) شود تا فقط عکس تمام صفحه بماند
+            this.style.display = 'none';
+        };
+    </script>
+
 </body>
 </html>
