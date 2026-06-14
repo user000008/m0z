@@ -5,37 +5,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>فضای موزیکال</title>
     <style>
-        /* تنظیمات کل صفحه */
         body, html {
             height: 100%;
             margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
-            /* ست کردن عکس پس‌زمینه به صورت تمام صفحه */
+            background-color: #000; /* پس‌زمینه مشکی برای پر کردن جاهای خالی دور عکس */
+            
+            /* اصلاح سایز عکس: contain باعث می‌شود کل عکس بدون قیچی شدن دیده شود */
             background: url('bg.jpg') no-repeat center center fixed;
-            background-size: cover;
+            background-size: contain; 
+            
             overflow: hidden;
             font-family: sans-serif;
+            -webkit-user-select: none; /* جلوگیری از انتخاب متن یا دکمه */
+            user-select: none;
         }
 
-        /* استایل دکمه پخش موزیک */
         .play-btn {
-            padding: 20px 40px;
-            font-size: 22px;
+            padding: 18px 36px;
+            font-size: 20px;
             color: white;
-            background: rgba(0, 0, 0, 0.6); /* دکمه شیشه‌ای تیره */
-            border: 2px solid white;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.7);
             border-radius: 50px;
             cursor: pointer;
-            backdrop-filter: blur(5px); /* افکت مات شدن پشت دکمه */
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             transition: all 0.3s ease;
+            z-index: 10;
         }
 
-        /* افکت انیمیشن ملایم هنگام نگه‌داشتن موس روی دکمه */
         .play-btn:hover {
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.9);
+            border-color: #fff;
             transform: scale(1.05);
         }
     </style>
@@ -44,18 +48,23 @@
 
     <button class="play-btn" id="btn">پخش موزیک 🎵</button>
 
-    <audio id="audio" loop src="music.mp3"></audio>
+    <audio id="audio" loop src="./music.mp3"></audio>
 
     <script>
-        // وقتی کاربر روی دکمه کلیک کرد:
-        document.getElementById('btn').onclick = function() {
-            // ۱. موزیک پخش شود
-            document.getElementById('audio').play().catch(function(error) {
-                console.log("خطا در پخش صدا:", error);
+        document.getElementById('btn').addEventListener('click', function() {
+            var myAudio = document.getElementById('audio');
+            
+            // دستور پخش صوتی
+            myAudio.play().then(function() {
+                console.log("موزیک با موفقیت پخش شد.");
+            }).catch(function(error) {
+                alert("مرورگر اجازه پخش صدا را نداد. لطفاً دوباره کلیک کنید.");
+                console.log("خطا:", error);
             });
-            // ۲. دکمه غیب (حذف) شود تا فقط عکس تمام صفحه بماند
+            
+            // مخفی کردن دکمه
             this.style.display = 'none';
-        };
+        });
     </script>
 
 </body>
