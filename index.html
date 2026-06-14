@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MOZ haHa</title>
+    <title>فضای موزیکال</title>
     <style>
         body, html {
             height: 100%;
             margin: 0;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            justify-content: flex-end; /* فرستادن محتوا به پایین صفحه */
             align-items: center;
             background-color: #000;
             overflow: hidden;
@@ -27,20 +28,27 @@
             z-index: 1;
         }
 
+        /* استایل دکمه در پایین صفحه - بسیار کوچک و مینیمال */
         .play-btn {
             position: relative;
             z-index: 10;
-            padding: 18px 36px;
-            font-size: 20px;
-            color: white;
-            background: rgba(0, 0, 0, 0.75);
-            border: 2px solid rgba(255, 255, 255, 0.8);
-            border-radius: 50px;
+            margin-bottom: 40px; /* فاصله از لبه پایین صفحه */
+            padding: 10px 25px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 30px;
             cursor: pointer;
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-            transition: all 0.2s ease;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+        }
+
+        .play-btn:active {
+            transform: scale(0.95);
+            background: rgba(0, 0, 0, 0.8);
         }
     </style>
 </head>
@@ -48,7 +56,7 @@
 
     <div class="bg-container"></div>
 
-    <button class="play-btn" id="btn">پخش موزیک 🎵</button>
+    <button class="play-btn" id="btn">mmmmmm 🎵</button>
 
     <audio id="audio" loop preload="auto" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"></audio>
 
@@ -56,13 +64,24 @@
         var btn = document.getElementById('btn');
         var audio = document.getElementById('audio');
 
-        btn.addEventListener('click', function() {
+        // تعریف عملکرد کلیک و لمس به صورت همزمان برای لود قطعی
+        function playMusic() {
+            // یک بار لود مجدد برای اطمینان از اتصال به سرور موزیک
+            audio.load(); 
+            
             audio.play().then(function() {
                 btn.style.display = 'none';
             }).catch(function(error) {
-                console.log("خطا:", error);
+                // تلاش مجدد در صورت بروز خطای مرورگر
+                audio.muted = false;
+                audio.play();
+                btn.style.display = 'none';
+                console.log("Error playing:", error);
             });
-        });
+        }
+
+        btn.addEventListener('click', playMusic);
+        btn.addEventListener('touchstart', playMusic);
     </script>
 
 </body>
