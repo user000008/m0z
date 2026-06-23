@@ -1,0 +1,1278 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>NEON OVERLORD: Extreme Boss Fight</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    :root {
+      --neon-blue: #00ffff;
+      --neon-pink: #ff00ff;
+      --neon-red: #ff0000;
+      --neon-yellow: #ffff00;
+      --bg-dark: #050010;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg-dark);
+      color: white;
+      touch-action: none;
+      overscroll-behavior: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    button,
+    .btn,
+    #mobileControls {
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+    
+    #gameContainer {
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      min-height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Scanline effect */
+    #gameContainer::after {
+      content: " ";
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+      z-index: 2;
+      background-size: 100% 4px, 3px 100%;
+      pointer-events: none;
+    }
+
+    #startMenu, #gameOver {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 1000;
+      width: min(90vw, 620px);
+      background: rgba(10, 0, 30, 0.85);
+      padding: clamp(22px, 5vw, 40px);
+      border: 2px solid var(--neon-blue);
+      border-radius: 20px;
+      box-shadow: 0 0 30px var(--neon-blue);
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      font-size: clamp(30px, 8vw, 60px);
+      margin: 0 0 20px 0;
+      text-transform: uppercase;
+      letter-spacing: clamp(2px, 0.8vw, 5px);
+      text-shadow: 0 0 20px var(--neon-blue);
+    }
+
+    #startButton, #restartButton {
+      background: transparent;
+      color: var(--neon-blue);
+      border: 2px solid var(--neon-blue);
+      padding: clamp(12px, 3vw, 15px) clamp(28px, 8vw, 50px);
+      font-size: clamp(17px, 4vw, 24px);
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-transform: uppercase;
+      letter-spacing: clamp(1px, 0.5vw, 3px);
+    }
+
+    #startButton:hover, #restartButton:hover {
+      background: var(--neon-blue);
+      color: black;
+      box-shadow: 0 0 50px var(--neon-blue);
+    }
+
+    #hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: clamp(8px, 2vw, 20px);
+      display: none;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    .health-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: clamp(8px, 3vw, 30px);
+      width: 100%;
+    }
+
+    .health-wrapper {
+      width: clamp(140px, 32vw, 300px);
+      min-width: 0;
+    }
+
+    .label {
+      font-size: clamp(10px, 1.5vw, 14px);
+      font-weight: bold;
+      margin-bottom: clamp(3px, 0.8vw, 5px);
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      white-space: nowrap;
+      text-shadow: 0 0 8px rgba(0,0,0,0.9);
+    }
+
+    .bar-bg {
+      height: clamp(8px, 1.3vw, 12px);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: 100%;
+      transition: width 0.2s ease-out;
+    }
+
+    #playerFill { background: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue); }
+    #bossFill { background: var(--neon-red); box-shadow: 0 0 15px var(--neon-red); }
+
+    #stats {
+      position: absolute;
+      top: clamp(14px, 2vw, 20px);
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: clamp(12px, 3vw, 30px);
+      align-items: center;
+      justify-content: center;
+      font-family: monospace;
+      font-size: clamp(12px, 2vw, 18px);
+      background: rgba(0, 0, 0, 0.55);
+      padding: clamp(6px, 1.3vw, 10px) clamp(10px, 2vw, 20px);
+      border-radius: 10px;
+      border-bottom: 1px solid var(--neon-pink);
+      white-space: nowrap;
+    }
+
+    .stat-val { color: var(--neon-yellow); }
+
+    #dashCooldown {
+      position: absolute;
+      bottom: clamp(96px, 16vh, 120px);
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: clamp(10px, 2vw, 20px);
+      z-index: 100;
+    }
+
+    .cooldown-item {
+      text-align: center;
+      background: rgba(0, 0, 0, 0.7);
+      padding: clamp(6px, 1.4vw, 10px);
+      border: 1px solid var(--neon-blue);
+      border-radius: 5px;
+      min-width: clamp(78px, 18vw, 100px);
+      font-size: clamp(10px, 2vw, 14px);
+      white-space: nowrap;
+    }
+
+    .ammo-dots {
+      display: flex;
+      gap: clamp(3px, 0.8vw, 4px);
+      margin-top: clamp(4px, 1vw, 5px);
+    }
+    .dot {
+      width: clamp(6px, 1.3vw, 8px);
+      height: clamp(6px, 1.3vw, 8px);
+      border: 1px solid white;
+      border-radius: 2px;
+    }
+    .dot.filled { background: white; box-shadow: 0 0 5px white; }
+
+    /* Mobile controls: hidden by default and enabled only for coarse/touch devices via JS. */
+    #mobileControls {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      display: none;
+      grid-template-columns: minmax(120px, 1fr) minmax(220px, 1.35fr);
+      align-items: end;
+      justify-content: space-between;
+      gap: clamp(12px, 4vw, 34px);
+      padding: 0 clamp(14px, 5vw, 42px) calc(max(12px, var(--safe-bottom)) + 10px);
+      z-index: 900;
+      pointer-events: none;
+    }
+
+    body.mobile-device #mobileControls {
+      display: grid;
+    }
+
+    .control-cluster {
+      display: flex;
+      align-items: end;
+      gap: clamp(10px, 3vw, 20px);
+      pointer-events: auto;
+    }
+
+    #moveBtns {
+      justify-content: flex-start;
+      justify-self: start;
+    }
+
+    #actionBtns {
+      justify-content: flex-end;
+      justify-self: end;
+      display: grid;
+      grid-template-columns: repeat(4, auto);
+      gap: clamp(9px, 2.5vw, 18px);
+      align-items: end;
+    }
+
+    .btn {
+      width: clamp(56px, 15vw, 76px);
+      height: clamp(56px, 15vw, 76px);
+      background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.22), rgba(255,255,255,0.08));
+      border: 2px solid rgba(255,255,255,0.9);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: white;
+      font-size: clamp(10px, 2.7vw, 13px);
+      letter-spacing: 0.5px;
+      text-shadow: 0 0 8px rgba(255,255,255,0.8);
+      box-shadow: 0 0 18px rgba(255,255,255,0.12), inset 0 0 15px rgba(255,255,255,0.08);
+      cursor: pointer;
+      transition: transform 0.05s linear, background 0.05s linear, box-shadow 0.05s linear;
+    }
+
+    .btn.is-held,
+    .btn:active {
+      transform: scale(0.94);
+      background: rgba(255, 255, 255, 0.32);
+      box-shadow: 0 0 28px rgba(255,255,255,0.4), inset 0 0 18px rgba(255,255,255,0.2);
+    }
+
+    #mDash { border-color: var(--neon-yellow); color: var(--neon-yellow); }
+    #mShield { border-color: var(--neon-pink); color: var(--neon-pink); }
+    #mJump { border-color: white; }
+    #mShoot {
+      width: clamp(76px, 20vw, 98px);
+      height: clamp(76px, 20vw, 98px);
+      border-color: var(--neon-blue);
+      color: var(--neon-blue);
+      font-size: clamp(11px, 3vw, 15px);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      body:not(.mobile-device) #mobileControls {
+        display: none !important;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .health-wrapper { width: min(44vw, 230px); }
+      #stats {
+        top: clamp(54px, 14vw, 78px);
+        font-size: clamp(11px, 3vw, 14px);
+        gap: clamp(8px, 2vw, 16px);
+        padding: 6px 10px;
+      }
+      #dashCooldown {
+        bottom: clamp(128px, 24vh, 172px);
+      }
+    }
+
+    @media (max-width: 700px) and (orientation: portrait) {
+      #mobileControls {
+        grid-template-columns: minmax(118px, 0.8fr) minmax(150px, 1.2fr);
+        gap: clamp(8px, 3vw, 18px);
+        padding-left: clamp(12px, 4vw, 20px);
+        padding-right: clamp(12px, 4vw, 20px);
+      }
+      #actionBtns {
+        grid-template-columns: repeat(2, auto);
+        gap: clamp(8px, 2.8vw, 14px);
+      }
+      #moveBtns {
+        gap: clamp(8px, 2.8vw, 12px);
+      }
+      .btn {
+        width: clamp(52px, 16vw, 64px);
+        height: clamp(52px, 16vw, 64px);
+      }
+      #mShoot {
+        width: clamp(64px, 19vw, 78px);
+        height: clamp(64px, 19vw, 78px);
+      }
+    }
+
+    @media (max-height: 460px) and (orientation: landscape) {
+      #hud { padding: 7px 12px; }
+      .health-wrapper { width: min(32vw, 220px); }
+      #stats {
+        top: 8px;
+        font-size: clamp(10px, 2.4vh, 13px);
+      }
+      #dashCooldown {
+        bottom: clamp(78px, 26vh, 104px);
+      }
+      #mobileControls {
+        padding-bottom: calc(max(8px, var(--safe-bottom)) + 6px);
+      }
+      .btn {
+        width: clamp(46px, 13vh, 62px);
+        height: clamp(46px, 13vh, 62px);
+        font-size: clamp(9px, 2.5vh, 12px);
+      }
+      #mShoot {
+        width: clamp(58px, 16vh, 76px);
+        height: clamp(58px, 16vh, 76px);
+      }
+    }
+  </style>
+ </head>
+ <body>
+  <div id="gameContainer">
+    <div id="startMenu">
+      <h1>NEON OVERLORD</h1>
+      <p style="color: var(--neon-pink); margin-bottom: 30px;">ULTRA-HARDCORE MODE</p>
+      <button id="startButton">ENTER THE VOID</button>
+      <div style="margin-top: 20px; font-size: 14px; opacity: 0.7;">
+        WASD/ARROWS: MOVE | SPACE: JUMP | L-CLICK: SHOOT | R-CLICK: SHIELD | SHIFT/E: DASH
+      </div>
+    </div>
+
+    <div id="hud">
+      <div class="health-section">
+        <div class="health-wrapper">
+          <div class="label">PLAYER <span id="playerHPText">100/100</span></div>
+          <div class="bar-bg"><div id="playerFill" class="bar-fill"></div></div>
+          <div id="playerAmmoDots" class="ammo-dots"></div>
+        </div>
+        <div class="health-wrapper">
+          <div class="label"><span id="bossPhaseText">PHASE 1</span> BOSS <span id="bossHPText">200/200</span></div>
+          <div class="bar-bg"><div id="bossFill" class="bar-fill"></div></div>
+        </div>
+      </div>
+      
+      <div id="stats">
+        <div>TIME: <span id="timerText" class="stat-val">0:00</span></div>
+        <div>RECORD: <span id="recordText" class="stat-val">--:--</span></div>
+      </div>
+
+      <div id="dashCooldown">
+        <div class="cooldown-item" id="dashUI">DASH: READY</div>
+        <div class="cooldown-item" id="shieldUI">SHIELD: READY</div>
+      </div>
+    </div>
+
+    <div id="gameOver" style="display: none;">
+      <h1 id="resultTitle">TERMINATED</h1>
+      <p id="finalTime"></p>
+      <button id="restartButton">REBOOT</button>
+    </div>
+
+    <div id="mobileControls" aria-label="Mobile game controls">
+      <div id="moveBtns" class="control-cluster" aria-label="Movement controls">
+        <div class="btn" id="mLeft" role="button" aria-label="Move left">L</div>
+        <div class="btn" id="mRight" role="button" aria-label="Move right">R</div>
+      </div>
+      <div id="actionBtns" class="control-cluster" aria-label="Action controls">
+        <div class="btn" id="mDash" role="button" aria-label="Dash">DASH</div>
+        <div class="btn" id="mShield" role="button" aria-label="Shield">SHIELD</div>
+        <div class="btn" id="mJump" role="button" aria-label="Jump">JUMP</div>
+        <div class="btn" id="mShoot" role="button" aria-label="Hold to fire">FIRE</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Game Constants & State
+    const CONFIG = {
+      GRAVITY: 0.009,
+      PLAYER_SPEED: 0.12,
+      DASH_FORCE: 0.8,
+      JUMP_FORCE: 0.22,
+      MAX_PLAYER_HP: 100,
+      MAX_BOSS_HP: [200, 300, 400, 500], // Per phase
+      PLAYER_AMMO: 6,
+      RECHARGE_RATE: 50, // frames
+      MOBILE_FIRE_INTERVAL: 12, // frames between held mobile shots
+    };
+
+    let state = {
+      gameStatus: 'menu',
+      time: 0,
+      bestTime: localStorage.getItem('neon_best') || null,
+      keys: {},
+      player: {
+        hp: CONFIG.MAX_PLAYER_HP,
+        ammo: CONFIG.PLAYER_AMMO,
+        ammoTimer: 0,
+        x: -20, y: 0.5, vy: 0,
+        jumps: 2,
+        dashCooldown: 0,
+        dashTimer: 0,
+        shieldActive: false,
+        shieldCooldown: 0,
+        shieldDuration: 0,
+        lastDir: 1
+      },
+      boss: {
+        hp: 200,
+        maxHp: 200,
+        phase: 1,
+        x: 20, y: 1, vy: 0,
+        targetX: 20,
+        timers: { move: 0, shoot: 0, special: 0, rage: 0 },
+        isLaserReady: false,
+        laserTimer: 0
+      },
+      bullets: [],
+      particles: [],
+      hazards: [],
+      input: {
+        mobileFireHeld: false,
+        mobileFireCooldown: 0
+      }
+    };
+
+    // Three.js Setup
+    let scene, camera, renderer, clock;
+    let playerMesh, bossMesh, floor, grid, arena;
+    let lights = {};
+
+    const CAMERA_CONFIG = {
+      minZ: 25,
+      maxZ: 220,
+      baseY: 10,
+      lookAtY: 2,
+      minCombatWidth: 42,
+      horizontalPadding: 8,
+      lerp: 0.08
+    };
+
+    function init() {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x020005);
+      scene.fog = new THREE.Fog(0x020005, 10, 60);
+
+      const viewport = getViewportSize();
+      camera = new THREE.PerspectiveCamera(75, viewport.width / viewport.height, 0.1, 1000);
+      camera.position.set(0, CAMERA_CONFIG.baseY, CAMERA_CONFIG.minZ);
+      
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(viewport.width, viewport.height);
+      document.getElementById('gameContainer').prepend(renderer.domElement);
+
+      // Environment
+      const floorGeo = new THREE.PlaneGeometry(100, 100);
+      const floorMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.1, metalness: 0.5 });
+      floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.rotation.x = -Math.PI/2;
+      scene.add(floor);
+
+      grid = new THREE.GridHelper(100, 50, 0x00ffff, 0x222222);
+      grid.position.y = 0.01;
+      scene.add(grid);
+
+      // Entities
+      playerMesh = createNeonCube(0x00ffff);
+      scene.add(playerMesh);
+
+      bossMesh = new THREE.Mesh(
+        new THREE.OctahedronGeometry(1.5),
+        new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 1 })
+      );
+      scene.add(bossMesh);
+
+      lights.ambient = new THREE.AmbientLight(0xffffff, 0.2);
+      scene.add(lights.ambient);
+
+      lights.point = new THREE.PointLight(0x00ffff, 2, 50);
+      scene.add(lights.point);
+
+      updateCameraFraming(true);
+      updateMobileControlsVisibility();
+      window.addEventListener('resize', handleResize, { passive: true });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', handleResize, { passive: true });
+      }
+
+      // Controls
+      window.addEventListener('keydown', e => {
+        if (['Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
+        state.keys[e.code] = true;
+      }, { passive: false });
+      window.addEventListener('keyup', e => {
+        if (['Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
+        state.keys[e.code] = false;
+      }, { passive: false });
+      window.addEventListener('mousedown', handleMouseDown);
+      window.addEventListener('contextmenu', e => e.preventDefault());
+
+      // Pointer Events based mobile setup. The CSS stays hidden on fine-pointer desktop devices.
+      setupMobileControls();
+
+      document.getElementById('startButton').onclick = startGame;
+      document.getElementById('restartButton').onclick = startGame;
+
+      updateAmmoUI();
+      if (state.bestTime) document.getElementById('recordText').textContent = formatTime(state.bestTime);
+    }
+
+    function getViewportSize() {
+      const container = document.getElementById('gameContainer');
+      const width = Math.max(1, container ? container.clientWidth : window.innerWidth);
+      const height = Math.max(1, container ? container.clientHeight : window.innerHeight);
+      return { width, height };
+    }
+
+    function handleResize() {
+      if (!camera || !renderer) return;
+      const viewport = getViewportSize();
+      camera.aspect = viewport.width / viewport.height;
+      camera.updateProjectionMatrix();
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(viewport.width, viewport.height);
+      updateCameraFraming(true);
+      updateMobileControlsVisibility();
+    }
+
+    function updateMobileControlsVisibility() {
+      const primaryFineDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+      const coarseTouch = window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(hover: none)').matches;
+      const isTouchOptimized = !primaryFineDesktop && (coarseTouch || navigator.maxTouchPoints > 0);
+      document.body.classList.toggle('mobile-device', isTouchOptimized);
+    }
+
+    function getCameraFrameTargets() {
+      const playerX = state.player.x;
+      const bossX = state.boss.x;
+      const minX = Math.min(playerX, bossX);
+      const maxX = Math.max(playerX, bossX);
+      const centerX = (minX + maxX) * 0.5;
+      const combatWidth = Math.max(CAMERA_CONFIG.minCombatWidth, (maxX - minX) + CAMERA_CONFIG.horizontalPadding * 2);
+      const aspect = Math.max(0.35, camera.aspect || 1);
+      const vFov = THREE.MathUtils.degToRad(camera.fov);
+      const zForWidth = combatWidth / (2 * Math.tan(vFov * 0.5) * aspect);
+      const targetZ = THREE.MathUtils.clamp(zForWidth, CAMERA_CONFIG.minZ, CAMERA_CONFIG.maxZ);
+      return { centerX, targetZ };
+    }
+
+    function updateCameraFraming(immediate = false) {
+      if (!camera) return;
+      const { centerX, targetZ } = getCameraFrameTargets();
+      if (immediate) {
+        camera.position.x = centerX;
+        camera.position.y = CAMERA_CONFIG.baseY;
+        camera.position.z = targetZ;
+      } else {
+        camera.position.x += (centerX - camera.position.x) * CAMERA_CONFIG.lerp;
+        camera.position.y += (CAMERA_CONFIG.baseY - camera.position.y) * CAMERA_CONFIG.lerp;
+        camera.position.z += (targetZ - camera.position.z) * CAMERA_CONFIG.lerp;
+      }
+      camera.lookAt(centerX, CAMERA_CONFIG.lookAtY, 0);
+      if (scene && scene.fog) {
+        scene.fog.far = Math.max(60, camera.position.z + 40);
+      }
+    }
+
+    function createNeonCube(color) {
+      const group = new THREE.Group();
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(1, 1, 1),
+        new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.5 })
+      );
+      group.add(mesh);
+      
+      const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.05, 1.05, 1.05));
+      const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff }));
+      group.add(line);
+      
+      return group;
+    }
+
+    function handleMouseDown(e) {
+      if (state.gameStatus !== 'playing') return;
+      if (e.button === 0) fireBullet();
+      if (e.button === 2) activateShield();
+    }
+
+    function startGame() {
+      initAudio();
+      state.gameStatus = 'playing';
+      state.player.hp = CONFIG.MAX_PLAYER_HP;
+      state.player.ammo = CONFIG.PLAYER_AMMO;
+      state.player.ammoTimer = 0;
+      state.player.dashCooldown = 0;
+      state.player.shieldCooldown = 0;
+      state.player.x = -20;
+      state.player.y = 0.5;
+      state.player.vy = 0;
+      state.player.jumps = 2;
+      state.player.dashTimer = 0;
+      state.player.shieldActive = false;
+      state.player.shieldDuration = 0;
+      if (state.player.shieldMesh) {
+        playerMesh.remove(state.player.shieldMesh);
+        state.player.shieldMesh = null;
+      }
+      state.input.mobileFireHeld = false;
+      state.input.mobileFireCooldown = 0;
+      state.keys = {};
+      
+      state.boss.hp = 200;
+      state.boss.maxHp = 200;
+      state.boss.phase = 1;
+      state.boss.x = 20;
+      state.boss.targetX = 20;
+      state.boss.timers = { move: 0, shoot: 0, special: 0, rage: 0 };
+      bossMesh.material.color.setHex(0xff0000);
+
+      state.time = 0;
+      
+      // Cleanup temporary gameplay objects while preserving the permanent arena, player, boss, lights, and grid.
+      state.bullets.forEach(b => scene.remove(b));
+      state.bullets = [];
+      state.particles.forEach(p => scene.remove(p));
+      state.particles = [];
+      state.hazards.forEach(h => scene.remove(h));
+      state.hazards = [];
+      const toRemove = [];
+      scene.traverse(child => {
+        if (child.userData && child.userData.temporary) toRemove.push(child);
+      });
+      toRemove.forEach(child => {
+        if (child.parent) child.parent.remove(child);
+      });
+      updateCameraFraming(true);
+      
+      document.getElementById('startMenu').style.display = 'none';
+      document.getElementById('gameOver').style.display = 'none';
+      document.getElementById('hud').style.display = 'block';
+      document.getElementById('bossPhaseText').textContent = 'PHASE 1';
+      
+      if (!clock) {
+        clock = new THREE.Clock();
+        animate();
+      }
+    }
+
+    function fireBullet() {
+      if (state.gameStatus !== 'playing') return false;
+      if (state.player.ammo <= 0) return false;
+      state.player.ammo--;
+      updateAmmoUI();
+
+      const geo = new THREE.SphereGeometry(0.2);
+      const mat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+      const b = new THREE.Mesh(geo, mat);
+      b.position.set(state.player.x, state.player.y, 0);
+      b.userData = { vx: 0.4 * state.player.lastDir, type: 'player' };
+      scene.add(b);
+      state.bullets.push(b);
+      playSound('shoot', 0.8, 1.5);
+      return true;
+    }
+
+    function activateShield() {
+      if (state.player.shieldCooldown > 0) return;
+      state.player.shieldActive = true;
+      state.player.shieldDuration = 60;
+      state.player.shieldCooldown = 180;
+      playSound('shield', 1, 0.5);
+      
+      const shieldGeo = new THREE.IcosahedronGeometry(1.2, 1);
+      const shieldMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.3, wireframe: true });
+      const shield = new THREE.Mesh(shieldGeo, shieldMat);
+      playerMesh.add(shield);
+      state.player.shieldMesh = shield;
+    }
+
+    function dash() {
+      if (state.player.dashCooldown > 0) return;
+      state.player.dashTimer = 10;
+      state.player.dashCooldown = 60;
+      playSound('dash', 1, 2);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+
+      if (state.gameStatus === 'playing') {
+        updatePlayer(delta);
+        updateMobileAutoFire();
+        updateBoss(delta);
+        updateBullets();
+        updateHazards();
+        updateUI();
+        state.time += delta;
+      }
+      
+      updateParticles();
+      
+      // Responsive combat framing: keep both the player and boss in view on every aspect ratio.
+      updateCameraFraming(false);
+
+      renderer.render(scene, camera);
+    }
+
+    function performJump() {
+      if (state.gameStatus !== 'playing') return false;
+      const p = state.player;
+      if (p.jumps <= 0) return false;
+      p.vy = CONFIG.JUMP_FORCE;
+      p.jumps--;
+      playSound('jump', 0.5, 1.2);
+      return true;
+    }
+
+    function updateMobileAutoFire() {
+      if (state.input.mobileFireCooldown > 0) state.input.mobileFireCooldown--;
+      if (state.gameStatus !== 'playing' || !state.input.mobileFireHeld) return;
+      if (state.input.mobileFireCooldown <= 0) {
+        fireBullet();
+        state.input.mobileFireCooldown = CONFIG.MOBILE_FIRE_INTERVAL;
+      }
+    }
+
+    function updatePlayer(delta) {
+      const p = state.player;
+      
+      // Horizontal Movement
+      let moveX = 0;
+      if (state.keys['KeyA'] || state.keys['ArrowLeft']) moveX = -1;
+      if (state.keys['KeyD'] || state.keys['ArrowRight']) moveX = 1;
+      
+      if (moveX !== 0) {
+        p.lastDir = moveX;
+        p.x += moveX * CONFIG.PLAYER_SPEED;
+      }
+
+      // Dash
+      if ((state.keys['ShiftLeft'] || state.keys['KeyE']) && p.dashCooldown <= 0) dash();
+      if (p.dashTimer > 0) {
+        p.x += p.lastDir * CONFIG.DASH_FORCE;
+        p.dashTimer--;
+        createTrail(playerMesh.position, 0x00ffff);
+      }
+
+      // Jump (keyboard only uses the Space key state; mobile calls performJump() directly.)
+      if (state.keys['Space']) {
+        performJump();
+        state.keys['Space'] = false; // Prevent hold-jump without interfering with mobile buttons.
+      }
+
+      // Physics
+      p.vy -= CONFIG.GRAVITY;
+      p.y += p.vy;
+      if (p.y <= 0.5) {
+        p.y = 0.5;
+        p.vy = 0;
+        p.jumps = 2;
+      }
+
+      p.x = Math.max(-45, Math.min(45, p.x));
+      playerMesh.position.set(p.x, p.y, 0);
+      playerMesh.rotation.z = -moveX * 0.2;
+
+      // Cooldowns
+      if (p.dashCooldown > 0) p.dashCooldown--;
+      if (p.shieldCooldown > 0) p.shieldCooldown--;
+      if (p.shieldDuration > 0) {
+        p.shieldDuration--;
+        if (p.shieldDuration <= 0) {
+          p.shieldActive = false;
+          playerMesh.remove(p.shieldMesh);
+        }
+      }
+
+      // Ammo Recharge
+      p.ammoTimer++;
+      if (p.ammoTimer >= CONFIG.RECHARGE_RATE && p.ammo < CONFIG.PLAYER_AMMO) {
+        p.ammo++;
+        p.ammoTimer = 0;
+        updateAmmoUI();
+      }
+    }
+
+    function updateBoss(delta) {
+      const b = state.boss;
+      const p = state.player;
+
+      // AI Logic
+      b.timers.move++;
+      b.timers.shoot++;
+      b.timers.special++;
+
+      // Predictive movement & keeping distance
+      if (b.timers.move > 60 / b.phase) {
+        const idealDist = 15;
+        const currentDist = b.x - p.x;
+        if (Math.abs(currentDist) < idealDist) {
+          b.targetX = b.x + (currentDist > 0 ? 10 : -10);
+        } else {
+          b.targetX = p.x + (currentDist > 0 ? idealDist : -idealDist);
+        }
+        b.timers.move = 0;
+      }
+
+      b.x += (b.targetX - b.x) * 0.05 * b.phase;
+      
+      // Phase 4 Teleportation
+      if (b.phase === 4 && Math.random() < 0.01) {
+        b.x = p.x + (Math.random() > 0.5 ? 15 : -15);
+        createExplosion(bossMesh.position, 0xffff00);
+        playSound('phase', 0.5, 2);
+      }
+      
+      b.x = Math.max(-45, Math.min(45, b.x));
+      
+      // Floating motion
+      b.y = 2 + Math.sin(Date.now() * 0.005) * 1;
+      bossMesh.position.set(b.x, b.y, 0);
+      bossMesh.rotation.y += 0.05 * b.phase;
+
+      // Shooting
+      const shootInterval = Math.max(10, 60 - (b.phase * 15));
+      if (b.timers.shoot > shootInterval) {
+        bossShoot();
+        b.timers.shoot = 0;
+      }
+
+    // Special Attacks
+      if (b.timers.special > 250 / b.phase) {
+        if (b.phase >= 2 && Math.random() < 0.5) spawnLaser();
+        if (b.phase >= 3 && Math.random() < 0.3) spawnHomingMissile();
+        if (b.phase === 4 && Math.random() < 0.2) spawnWaveAttack();
+        b.timers.special = 0;
+      }
+
+      // Phase Transition
+      if (b.hp <= 0) {
+        if (b.phase < 4) {
+          b.phase++;
+          b.maxHp = CONFIG.MAX_BOSS_HP[b.phase-1];
+          b.hp = b.maxHp;
+          playSound('phase', 1, 0.5);
+          document.getElementById('bossPhaseText').textContent = 'PHASE ' + b.phase;
+          if (b.phase === 4) bossMesh.material.color.setHex(0xffff00);
+        } else {
+          endGame(true);
+        }
+      }
+    }
+
+    function bossShoot() {
+      const b = state.boss;
+      const p = state.player;
+      
+      // Predictive Aim: aim where player will be
+      const dist = Math.abs(b.x - p.x);
+      const timeToHit = dist / 0.3;
+      const predictedX = p.x + (state.keys['KeyD'] ? 0.12 : state.keys['KeyA'] ? -0.12 : 0) * timeToHit;
+      
+      const angle = Math.atan2(0.5 - b.y, predictedX - b.x);
+      
+      const geo = new THREE.OctahedronGeometry(0.3);
+      const mat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const bullet = new THREE.Mesh(geo, mat);
+      bullet.position.set(b.x, b.y, 0);
+      bullet.userData = { 
+        vx: Math.cos(angle) * 0.3, 
+        vy: Math.sin(angle) * 0.3, 
+        type: 'boss' 
+      };
+      scene.add(bullet);
+      state.bullets.push(bullet);
+    }
+
+    function spawnLaser() {
+      const x = state.player.x;
+      const geo = new THREE.BoxGeometry(0.5, 100, 0.5);
+      const mat = new THREE.MeshBasicMaterial({ color: 0xff00ff, transparent: true, opacity: 0.3 });
+      const laser = new THREE.Mesh(geo, mat);
+      laser.position.set(x, 0, 0);
+      laser.userData.temporary = true;
+      scene.add(laser);
+      state.hazards.push(laser);
+      
+      // Warning phase
+      setTimeout(() => {
+        laser.material.opacity = 1;
+        laser.scale.x = 4;
+        // Check collision
+        if (Math.abs(state.player.x - laser.position.x) < 2 && !state.player.shieldActive) {
+          damagePlayer(30);
+        }
+        setTimeout(() => {
+          scene.remove(laser);
+          const idx = state.hazards.indexOf(laser);
+          if (idx !== -1) state.hazards.splice(idx, 1);
+        }, 200);
+      }, 1000);
+    }
+
+    function spawnHomingMissile() {
+      const b = state.boss;
+      const geo = new THREE.ConeGeometry(0.4, 1);
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(b.x, b.y, 0);
+      m.userData = { homing: true, life: 300, type: 'boss' };
+      scene.add(m);
+      state.bullets.push(m);
+    }
+
+    function updateBullets() {
+      for (let i = state.bullets.length - 1; i >= 0; i--) {
+        const b = state.bullets[i];
+        
+        if (b.userData.homing) {
+          const dx = state.player.x - b.position.x;
+          const dy = state.player.y - b.position.y;
+          const angle = Math.atan2(dy, dx);
+          b.position.x += Math.cos(angle) * 0.15;
+          b.position.y += Math.sin(angle) * 0.15;
+          b.rotation.z = angle + Math.PI/2;
+          b.userData.life--;
+          if (b.userData.life <= 0) {
+            scene.remove(b);
+            state.bullets.splice(i, 1);
+            continue;
+          }
+        } else {
+          b.position.x += b.userData.vx || 0;
+          b.position.y += b.userData.vy || 0;
+        }
+
+        // Collision: Player Bullets -> Boss
+        if (b.userData.type === 'player' && b.position.distanceTo(bossMesh.position) < 2) {
+          state.boss.hp -= 10;
+          createExplosion(b.position, 0x00ffff);
+          scene.remove(b);
+          state.bullets.splice(i, 1);
+          playSound('hit', 0.5, 2);
+          continue;
+        }
+
+        // Collision: Boss Bullets -> Player
+        if (b.userData.type === 'boss' && b.position.distanceTo(playerMesh.position) < 1) {
+          if (state.player.shieldActive) {
+            // Reflect!
+            b.userData.type = 'player';
+            b.userData.vx *= -1.5;
+            b.userData.vy *= -1.5;
+            b.material.color.setHex(0x00ffff);
+            playSound('parry', 0.8, 1.5);
+          } else {
+            damagePlayer(15);
+            scene.remove(b);
+            state.bullets.splice(i, 1);
+            continue;
+          }
+        }
+
+        if (Math.abs(b.position.x) > 50 || Math.abs(b.position.y) > 30) {
+          scene.remove(b);
+          state.bullets.splice(i, 1);
+        }
+      }
+    }
+
+    function updateHazards() {
+        // Arena obstacles or floor hazards can be added here
+    }
+
+    function spawnWaveAttack() {
+      const b = state.boss;
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const geo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+        const mat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        const bullet = new THREE.Mesh(geo, mat);
+        bullet.position.set(b.x, b.y, 0);
+        bullet.userData = { 
+          vx: Math.cos(angle) * 0.25, 
+          vy: Math.sin(angle) * 0.25, 
+          type: 'boss' 
+        };
+        scene.add(bullet);
+        state.bullets.push(bullet);
+      }
+    }
+
+    function shakeCamera() {
+      const originalPos = camera.position.clone();
+      const intensity = 0.5;
+      let duration = 10;
+      const shake = () => {
+        if (duration > 0) {
+          camera.position.x += (Math.random() - 0.5) * intensity;
+          camera.position.y += (Math.random() - 0.5) * intensity;
+          duration--;
+          requestAnimationFrame(shake);
+        } else {
+          camera.position.copy(originalPos);
+        }
+      };
+      shake();
+    }
+
+    function damagePlayer(amt) {
+      if (state.player.dashTimer > 0) return; // I-frames
+      state.player.hp -= amt;
+      shakeCamera();
+      createExplosion(playerMesh.position, 0xff0000);
+      playSound('damage', 1, 0.5);
+      if (state.player.hp <= 0) endGame(false);
+    }
+
+    function createExplosion(pos, color) {
+      for (let i = 0; i < 10; i++) {
+        const p = new THREE.Mesh(
+          new THREE.BoxGeometry(0.2, 0.2, 0.2),
+          new THREE.MeshBasicMaterial({ color })
+        );
+        p.position.copy(pos);
+        p.userData = {
+          vx: (Math.random() - 0.5) * 0.3,
+          vy: (Math.random() - 0.5) * 0.3,
+          life: 30
+        };
+        scene.add(p);
+        state.particles.push(p);
+      }
+    }
+
+    function createTrail(pos, color) {
+      const p = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 0.8, 0.8),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5 })
+      );
+      p.position.copy(pos);
+      p.userData = { life: 10, fade: true };
+      scene.add(p);
+      state.particles.push(p);
+    }
+
+    function updateParticles() {
+      for (let i = state.particles.length - 1; i >= 0; i--) {
+        const p = state.particles[i];
+        if (p.userData.fade) {
+          p.material.opacity -= 0.05;
+        } else {
+          p.position.x += p.userData.vx;
+          p.position.y += p.userData.vy;
+        }
+        p.userData.life--;
+        if (p.userData.life <= 0) {
+          scene.remove(p);
+          state.particles.splice(i, 1);
+        }
+      }
+    }
+
+    function updateUI() {
+      document.getElementById('playerFill').style.width = (state.player.hp / CONFIG.MAX_PLAYER_HP * 100) + '%';
+      document.getElementById('bossFill').style.width = (state.boss.hp / state.boss.maxHp * 100) + '%';
+      document.getElementById('playerHPText').textContent = Math.ceil(state.player.hp) + '/100';
+      document.getElementById('bossHPText').textContent = Math.ceil(state.boss.hp) + '/' + state.boss.maxHp;
+      document.getElementById('timerText').textContent = formatTime(state.time);
+      
+      document.getElementById('dashUI').textContent = state.player.dashCooldown > 0 ? 'DASH: ' + Math.ceil(state.player.dashCooldown/60) + 's' : 'DASH: READY';
+      document.getElementById('shieldUI').textContent = state.player.shieldCooldown > 0 ? 'SHIELD: ' + Math.ceil(state.player.shieldCooldown/60) + 's' : 'SHIELD: READY';
+      
+      if (state.player.dashCooldown === 0) document.getElementById('dashUI').style.color = 'var(--neon-yellow)';
+      else document.getElementById('dashUI').style.color = 'white';
+    }
+
+    function updateAmmoUI() {
+      const container = document.getElementById('playerAmmoDots');
+      container.innerHTML = '';
+      for (let i = 0; i < CONFIG.PLAYER_AMMO; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'dot' + (i < state.player.ammo ? ' filled' : '');
+        container.appendChild(dot);
+      }
+    }
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function endGame(win) {
+      state.gameStatus = 'gameover';
+      state.input.mobileFireHeld = false;
+      state.input.mobileFireCooldown = 0;
+      document.querySelectorAll('#mobileControls .btn.is-held').forEach(btn => btn.classList.remove('is-held'));
+      document.getElementById('gameOver').style.display = 'block';
+      document.getElementById('resultTitle').textContent = win ? 'SYSTEM OVERLOAD' : 'TERMINATED';
+      document.getElementById('resultTitle').style.color = win ? 'var(--neon-blue)' : 'var(--neon-red)';
+      document.getElementById('finalTime').textContent = 'TIME: ' + formatTime(state.time);
+      
+      if (win && (!state.bestTime || state.time < state.bestTime)) {
+        state.bestTime = state.time;
+        localStorage.setItem('neon_best', state.time);
+        document.getElementById('recordText').textContent = formatTime(state.time);
+      }
+    }
+
+    // Audio Helpers
+    let audioCtx;
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playSound(type, vol, pitch) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      const now = audioCtx.currentTime;
+      gain.gain.setValueAtTime(vol * 0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      
+      let freq = 440;
+      switch(type) {
+        case 'shoot': freq = 800; osc.type = 'square'; break;
+        case 'jump': freq = 300; break;
+        case 'hit': freq = 150; osc.type = 'sawtooth'; break;
+        case 'damage': freq = 100; osc.type = 'square'; break;
+        case 'shield': freq = 1200; break;
+        case 'dash': freq = 600; break;
+        case 'phase': freq = 200; break;
+        case 'parry': freq = 1500; break;
+      }
+      
+      osc.frequency.setValueAtTime(freq, now);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.5, now + 0.2);
+      osc.start();
+      osc.stop(now + 0.3);
+    }
+
+    function setupMobileControls() {
+      if (setupMobileControls.initialized) return;
+      setupMobileControls.initialized = true;
+
+      const bindPointerButton = (id, handlers) => {
+        const el = document.getElementById(id);
+        const activePointers = new Set();
+
+        const onDown = (e) => {
+          e.preventDefault();
+          initAudio();
+          if (el.setPointerCapture) {
+            try { el.setPointerCapture(e.pointerId); } catch (err) {}
+          }
+          activePointers.add(e.pointerId);
+          el.classList.add('is-held');
+          if (handlers.down) handlers.down(e, activePointers.size);
+        };
+
+        const onUp = (e) => {
+          if (!activePointers.has(e.pointerId)) return;
+          e.preventDefault();
+          activePointers.delete(e.pointerId);
+          if (activePointers.size === 0) {
+            el.classList.remove('is-held');
+            if (handlers.up) handlers.up(e);
+          }
+        };
+
+        el.addEventListener('pointerdown', onDown, { passive: false });
+        el.addEventListener('pointerup', onUp, { passive: false });
+        el.addEventListener('pointercancel', onUp, { passive: false });
+        el.addEventListener('lostpointercapture', onUp, { passive: false });
+      };
+
+      bindPointerButton('mLeft', {
+        down: () => { state.keys['ArrowLeft'] = true; },
+        up: () => { state.keys['ArrowLeft'] = false; }
+      });
+
+      bindPointerButton('mRight', {
+        down: () => { state.keys['ArrowRight'] = true; },
+        up: () => { state.keys['ArrowRight'] = false; }
+      });
+
+      bindPointerButton('mDash', {
+        down: () => { if (state.gameStatus === 'playing') dash(); }
+      });
+
+      bindPointerButton('mShield', {
+        down: () => { if (state.gameStatus === 'playing') activateShield(); }
+      });
+
+      bindPointerButton('mJump', {
+        down: () => { performJump(); }
+      });
+
+      bindPointerButton('mShoot', {
+        down: () => {
+          state.input.mobileFireHeld = true;
+          state.input.mobileFireCooldown = 0;
+          updateMobileAutoFire();
+        },
+        up: () => {
+          state.input.mobileFireHeld = false;
+        }
+      });
+    }
+
+    init();
+  </script></body>
+</html>
